@@ -1,6 +1,6 @@
 # uow
 
-![Tests](https://github.com/ruggi/uow/workflows/Tests/badge.svg?branch=master)
+![Tests](https://github.com/ruggi/uow/workflows/Tests/badge.svg?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/ruggi/uow)](https://goreportcard.com/report/github.com/ruggi/uow)
 
 A proof of concept.
 
