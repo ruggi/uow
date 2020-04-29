@@ -2,15 +2,16 @@ package uow
 
 import (
 	"context"
+	"fmt"
 )
 
 // Transactional begins a transaction.
 type Transactional interface {
-	Begin() (Transaction, error)
+	Begin() (Tx, error)
 }
 
-// Transaction is a set of all-or-nothing operations.
-type Transaction interface {
+// Tx is a set of all-or-nothing operations.
+type Tx interface {
 	Commit() error
 	Rollback() error
 }
@@ -25,7 +26,7 @@ type ContextFunc func(interface{}) context.Context
 
 // Run runs the given function over the UnitOfWork, transactionally.
 func (u *UnitOfWork) Run(fn func(ContextFunc) error) (err error) {
-	txs := make([]Transaction, 0, len(u.components))
+	txs := make([]Tx, 0, len(u.components))
 
 	defer func() {
 		if err == nil {
@@ -47,6 +48,18 @@ func (u *UnitOfWork) Run(fn func(ContextFunc) error) (err error) {
 			err = tx.Commit()
 			if err != nil { // good job, you broke it!
 				return
+			}
+		}
+	}()
+
+	defer func() {
+		rec := recover()
+		if rec != nil {
+			switch t := rec.(type) {
+			case error:
+				err = t
+			default:
+				err = fmt.Errorf("recovered: %v", t)
 			}
 		}
 	}()
