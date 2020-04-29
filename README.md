@@ -14,10 +14,14 @@ import (
 )
 
 func main() {
-    db := newDB()       // Implements Transactional
+    db := newDB()       // implements Transactional
     cache := newCache() // implements Transactional
 
-    err := uow.NewUnitOfWork(db, cache).Run(func(ctx uow.ContextFunc) error {
+    // Create a new UOW around the desired components.
+    unit := uow.NewUnitOfWork(db, cache)
+
+    // Run it!
+    err := unit.Run(func(ctx uow.ContextFunc) error {
         // get from cache
         value, err := cache.Get(ctx(cache), "key")
         if err != nil {
