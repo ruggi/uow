@@ -1,5 +1,7 @@
 # uow
 
+![Tests](https://github.com/ruggi/uow/workflows/Tests/badge.svg?branch=master)
+
 A proof of concept.
 
 Example usage:
