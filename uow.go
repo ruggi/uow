@@ -21,6 +21,21 @@ type UnitOfWork struct {
 	components []Transactional
 }
 
+// NewUnitOfWork creates a new UnitOfWork with the given components. The passed components must implement the Transactional interface.
+func NewUnitOfWork(components ...interface{}) (*UnitOfWork, error) {
+	unit := &UnitOfWork{
+		components: make([]Transactional, 0, len(components)),
+	}
+	for _, c := range components {
+		t, ok := c.(Transactional)
+		if !ok {
+			return nil, fmt.Errorf("cannot create unit of work: component %T does not implement uow.Transactional", c)
+		}
+		unit.components = append(unit.components, t)
+	}
+	return unit, nil
+}
+
 // ContextFunc returns the context for a given Transactional component of a UnitOfWork.
 type ContextFunc func(interface{}) context.Context
 
@@ -77,11 +92,4 @@ func (u *UnitOfWork) Run(fn func(ContextFunc) error) (err error) {
 	return fn(func(c interface{}) context.Context {
 		return context.WithValue(context.Background(), c, contexts[c])
 	})
-}
-
-// NewUnitOfWork creates a new UnitOfWork with the given components.
-func NewUnitOfWork(components ...Transactional) *UnitOfWork {
-	return &UnitOfWork{
-		components: components,
-	}
 }

@@ -51,7 +51,21 @@ func (f *foo) Foo(ctx context.Context) (string, error) {
 	return val, f.err
 }
 
-func TestUOW(t *testing.T) {
+func TestNewUOW(t *testing.T) {
+	type nonTransactional struct{}
+	_, err := uow.NewUnitOfWork(nonTransactional{})
+	require.Error(t, err)
+	assert.Equal(t, "cannot create unit of work: component uow_test.nonTransactional does not implement uow.Transactional", err.Error())
+
+	_, err = uow.NewUnitOfWork(&foo{}, foo{})
+	require.Error(t, err)
+	assert.Equal(t, "cannot create unit of work: component uow_test.foo does not implement uow.Transactional", err.Error())
+
+	_, err = uow.NewUnitOfWork(&foo{}, &foo{})
+	require.NoError(t, err)
+}
+
+func TestUOWRun(t *testing.T) {
 	tests := []struct {
 		a             *foo
 		b             *foo
@@ -177,8 +191,11 @@ func TestUOW(t *testing.T) {
 
 	for _, tt := range tests {
 		result := ""
-		unit := uow.NewUnitOfWork(tt.a, tt.b)
-		err := unit.Run(func(ctx uow.ContextFunc) error {
+
+		unit, err := uow.NewUnitOfWork(tt.a, tt.b)
+		require.NoError(t, err)
+
+		err = unit.Run(func(ctx uow.ContextFunc) error {
 			var err error
 			result, err = tt.a.Foo(ctx(tt.a))
 			if err != nil {
@@ -196,6 +213,7 @@ func TestUOW(t *testing.T) {
 		} else {
 			assert.NoError(t, err)
 		}
+
 		assert.Equal(t, tt.txaCommitted, tt.a.tx.committed)
 		assert.Equal(t, tt.txbCommitted, tt.b.tx.committed)
 		assert.Equal(t, tt.txaRolledBack, tt.a.tx.rolledBack)
