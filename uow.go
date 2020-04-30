@@ -19,12 +19,14 @@ type Tx interface {
 // UnitOfWork wraps a group of Transactional components and can run multiple transactions as one.
 type UnitOfWork struct {
 	components []Transactional
+	contexts   map[interface{}]interface{}
 }
 
 // NewUnitOfWork creates a new UnitOfWork with the given components. The passed components must implement the Transactional interface.
 func NewUnitOfWork(components ...interface{}) (*UnitOfWork, error) {
 	unit := &UnitOfWork{
 		components: make([]Transactional, 0, len(components)),
+		contexts:   map[interface{}]interface{}{},
 	}
 	for _, c := range components {
 		t, ok := c.(Transactional)
@@ -36,11 +38,18 @@ func NewUnitOfWork(components ...interface{}) (*UnitOfWork, error) {
 	return unit, nil
 }
 
-// ContextFunc returns the context for a given Transactional component of a UnitOfWork.
-type ContextFunc func(interface{}) context.Context
+// Context returns the context for the given argument.
+func (u *UnitOfWork) Context(c interface{}) context.Context {
+	return context.WithValue(context.Background(), c, u.contexts[c])
+}
+
+// Contextual returns a context for a given argument.
+type Contextual interface {
+	Context(interface{}) context.Context
+}
 
 // Run runs the given function over the UnitOfWork, transactionally.
-func (u *UnitOfWork) Run(fn func(ContextFunc) error) (err error) {
+func (u *UnitOfWork) Run(fn func(Contextual) error) (err error) {
 	txs := make([]Tx, 0, len(u.components))
 
 	defer func() {
@@ -79,17 +88,14 @@ func (u *UnitOfWork) Run(fn func(ContextFunc) error) (err error) {
 		}
 	}()
 
-	contexts := map[interface{}]interface{}{}
 	for _, c := range u.components {
 		tx, err := c.Begin()
 		if err != nil {
 			return err
 		}
-		contexts[c] = tx
+		u.contexts[c] = tx
 		txs = append(txs, tx)
 	}
 
-	return fn(func(c interface{}) context.Context {
-		return context.WithValue(context.Background(), c, contexts[c])
-	})
+	return fn(u)
 }

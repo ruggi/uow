@@ -195,13 +195,13 @@ func TestUOWRun(t *testing.T) {
 		unit, err := uow.NewUnitOfWork(tt.a, tt.b)
 		require.NoError(t, err)
 
-		err = unit.Run(func(ctx uow.ContextFunc) error {
+		err = unit.Run(func(c uow.Contextual) error {
 			var err error
-			result, err = tt.a.Foo(ctx(tt.a))
+			result, err = tt.a.Foo(c.Context(tt.a))
 			if err != nil {
 				return err
 			}
-			result, err = tt.b.Foo(ctx(tt.b))
+			result, err = tt.b.Foo(c.Context(tt.b))
 			if err != nil {
 				return err
 			}
