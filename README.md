@@ -18,12 +18,15 @@ func main() {
     cache := newCache() // implements Transactional
 
     // Create a new UOW around the desired components.
-    unit := uow.NewUnitOfWork(db, cache)
+    unit, err := uow.NewUnitOfWork(db, cache)
+    if err != nil {
+        panic(err)
+    }
 
     // Run it!
-    err := unit.Run(func(ctx uow.ContextFunc) error {
+    err := unit.Run(func(c uow.Contextual) error {
         // get from cache
-        value, err := cache.Get(ctx(cache), "key")
+        value, err := cache.Get(c.Context(cache), "key")
         if err != nil {
             return err
         }
@@ -33,13 +36,13 @@ func main() {
         }
 
         // insert in the db
-        err = db.Insert(ctx(db), "key", "value")
+        err = db.Insert(c.Context(db), "key", "value")
         if err != nil {
             return err
         }
 
         // cache the value
-        err = cache.Set(ctx(cache), "key", "value")
+        err = cache.Set(c.Context(cache), "key", "value")
         if err != nil {
             return err
         }
