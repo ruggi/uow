@@ -108,3 +108,8 @@ func (u *UnitOfWork) Run(fn func(Contextual) error) (err error) {
 
 	return fn(u)
 }
+
+type NopTx struct{}
+
+func (NopTx) Commit() error   { return nil }
+func (NopTx) Rollback() error { return nil }
