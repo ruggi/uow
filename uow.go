@@ -48,6 +48,11 @@ type Contextual interface {
 	Context(interface{}) context.Context
 }
 
+// ContextProvider returns a context key
+type ContextProvider interface {
+	ContextKey() interface{}
+}
+
 // Run runs the given function over the UnitOfWork, transactionally.
 func (u *UnitOfWork) Run(fn func(Contextual) error) (err error) {
 	txs := make([]Tx, 0, len(u.components))
@@ -93,7 +98,11 @@ func (u *UnitOfWork) Run(fn func(Contextual) error) (err error) {
 		if err != nil {
 			return err
 		}
-		u.contexts[c] = tx
+		var key interface{} = c
+		if cp, ok := c.(ContextProvider); ok {
+			key = cp.ContextKey()
+		}
+		u.contexts[key] = tx
 		txs = append(txs, tx)
 	}
 
