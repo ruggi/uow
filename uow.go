@@ -10,7 +10,7 @@ type Transactional interface {
 	Begin() (Tx, error)
 }
 
-// Tx is a set of all-or-nothing operations.
+// Tx commits or rolls back a set of all-or-nothing operations.
 type Tx interface {
 	Commit() error
 	Rollback() error
@@ -94,13 +94,16 @@ func (u *UnitOfWork) Run(fn func(Contextual) error) (err error) {
 	}()
 
 	for _, c := range u.components {
-		tx, err := c.Begin()
-		if err != nil {
-			return err
-		}
 		var key interface{} = c
 		if cp, ok := c.(ContextProvider); ok {
 			key = cp.ContextKey()
+		}
+		if _, ok := u.contexts[key]; ok { // make sure that the same context providers share the same context
+			continue
+		}
+		tx, err := c.Begin()
+		if err != nil {
+			return err
 		}
 		u.contexts[key] = tx
 		txs = append(txs, tx)
@@ -109,7 +112,11 @@ func (u *UnitOfWork) Run(fn func(Contextual) error) (err error) {
 	return fn(u)
 }
 
+// NopTx is a no-op transaction that can be used to implement temporary/dummy Transactional types.
 type NopTx struct{}
 
-func (NopTx) Commit() error   { return nil }
+// Commit does nothing.
+func (NopTx) Commit() error { return nil }
+
+// Rollback does nothing.
 func (NopTx) Rollback() error { return nil }
